@@ -271,5 +271,16 @@ def logout():
     session.clear()
     return redirect(url_for('index'))
 
+import sys
+
+# ... (existing imports and code) ...
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    port = 5000
+    if len(sys.argv) > 1:
+        try:
+            port = int(sys.argv[1])
+        except ValueError:
+            print(f"Invalid port number: {sys.argv[1]}. Using default port 5000.")
+    
+    app.run(debug=True, port=port)
