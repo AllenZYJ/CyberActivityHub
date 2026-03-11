@@ -113,6 +113,35 @@ h1 {
     border-color: #000;
 }
 
+/* Theme Switcher */
+.theme-switcher {
+    margin-top: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    background: #fff;
+    padding: 0.5rem;
+    border: 2px solid #000;
+    box-shadow: 4px 4px 0px #000;
+    transform: rotate(1deg);
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.theme-switcher button {
+    border: none;
+    background: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+}
+
+.theme-switcher button:hover {
+    transform: scale(1.2);
+}
+
 /* Login State */
 .login-container {
     text-align: center;
@@ -134,7 +163,8 @@ h1 {
     text-transform: uppercase;
     margin-top: 1rem;
     box-shadow: 5px 5px 0px #000;
-    transition: all 0.1s ease;
+    transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, box-shadow;
 }
 
 .btn-connect:hover {
@@ -160,7 +190,8 @@ h1 {
     padding: 0.8rem 2rem;
     text-transform: uppercase;
     box-shadow: 4px 4px 0px #000;
-    transition: all 0.1s;
+    transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.1s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.1s, color 0.1s;
+    will-change: transform, box-shadow, background-color, color;
 }
 
 .tab-btn:hover {
@@ -183,12 +214,23 @@ h1 {
 
 .tab-content.active {
     display: block;
-    animation: fadeIn 0.3s steps(5);
+    animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUpFade {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Month Header */
@@ -203,6 +245,7 @@ h1 {
     display: inline-block;
     box-shadow: 4px 4px 0px var(--border-color);
     transform: rotate(-1deg);
+    will-change: transform;
 }
 
 /* Activity List */
@@ -218,6 +261,7 @@ h1 {
     text-decoration: none;
     color: inherit;
     display: block;
+    animation: slideUpFade 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
 .activity-card {
@@ -226,11 +270,12 @@ h1 {
     padding: 1.5rem;
     position: relative;
     box-shadow: var(--shadow-offset) var(--shadow-offset) 0px #000;
-    transition: all 0.15s ease;
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    will-change: transform, box-shadow;
 }
 
 /* Randomize card accent colors using nth-child */
@@ -356,12 +401,14 @@ h1 {
     border: var(--border-width) solid #000;
     padding: 1.5rem;
     box-shadow: 6px 6px 0px #000;
-    transition: transform 0.2s;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     text-align: center;
+    will-change: transform, box-shadow;
+    animation: slideUpFade 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
 .bento-item:hover {
@@ -397,67 +444,42 @@ h1 {
     /* Default is span 1 */
 }
 
-.stat-card .label {
-    display: block;
-    font-size: 0.9rem;
-    font-weight: 900;
-    text-transform: uppercase;
-    margin-bottom: 0.5rem;
-    background: #000;
-    color: #fff;
-    padding: 0.2rem;
-    transform: skew(-10deg);
-}
+/* Stagger Animations */
+.activity-card-link:nth-child(1), .bento-item:nth-child(1) { animation-delay: 0.05s; }
+.activity-card-link:nth-child(2), .bento-item:nth-child(2) { animation-delay: 0.1s; }
+.activity-card-link:nth-child(3), .bento-item:nth-child(3) { animation-delay: 0.15s; }
+.activity-card-link:nth-child(4), .bento-item:nth-child(4) { animation-delay: 0.2s; }
+.activity-card-link:nth-child(5), .bento-item:nth-child(5) { animation-delay: 0.25s; }
+.activity-card-link:nth-child(6), .bento-item:nth-child(6) { animation-delay: 0.3s; }
+.activity-card-link:nth-child(7), .bento-item:nth-child(7) { animation-delay: 0.35s; }
+.activity-card-link:nth-child(8), .bento-item:nth-child(8) { animation-delay: 0.4s; }
+.activity-card-link:nth-child(9), .bento-item:nth-child(9) { animation-delay: 0.45s; }
+.activity-card-link:nth-child(10), .bento-item:nth-child(10) { animation-delay: 0.5s; }
+.activity-card-link:nth-child(11) { animation-delay: 0.55s; }
+.activity-card-link:nth-child(12) { animation-delay: 0.6s; }
 
-.stat-card .value {
-    font-size: 1.8rem;
-    font-weight: 900;
-    font-family: 'Arial Black', sans-serif;
-    color: var(--accent-color);
-    text-shadow: 2px 2px 0px #000;
-}
-
+/* Responsive Adjustments */
 @media (max-width: 768px) {
     .container {
-        width: 95%;
+        width: 90%;
         margin: 1rem auto;
+        padding: 1rem;
     }
-
+    
     .bento-grid {
         grid-template-columns: repeat(2, 1fr);
     }
+    
     .map-item {
         grid-column: span 2;
     }
+    
     .large-stat {
-        grid-column: span 1; /* Reset large stats to single column on tablet */
+        grid-column: span 2;
     }
-}
-
-footer {
-    margin-top: 4rem;
-    text-align: center;
-    font-size: 1.2rem;
-    font-weight: bold;
-    padding: 2rem;
-    background: #000;
-    color: #fff;
-    text-transform: uppercase;
-    border: var(--border-width) solid #000;
-    transform: rotate(1deg);
 }
 
 @media (max-width: 600px) {
-    body {
-        padding: 10px;
-    }
-    
-    .container {
-        padding: 1rem;
-        box-shadow: 5px 5px 0px #000;
-        margin-top: 0;
-    }
-    
     header {
         flex-direction: column;
         gap: 1rem;
@@ -465,49 +487,19 @@ footer {
         padding: 1rem;
     }
     
-    h1 {
-        font-size: 2rem;
-        text-align: center;
-    }
-    
-    .user-info {
-        width: 100%;
-        box-sizing: border-box;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    
     .activity-list {
         grid-template-columns: 1fr;
-        gap: 2rem; /* Reduce gap on mobile */
     }
     
-    /* Stack bento grid to single column on mobile */
     .bento-grid {
         grid-template-columns: 1fr;
     }
     
-    .map-item {
-        grid-column: span 1;
-        height: 300px; /* Fixed height for map on mobile */
-    }
-    
-    .large-stat {
+    .map-item, .large-stat, .stat-card {
         grid-column: span 1;
     }
     
-    .stat-card .value {
-        font-size: 1.5rem;
-    }
-    
-    /* Make activity stats stack if needed or smaller */
-    .activity-stats {
-        gap: 0.25rem;
-        font-size: 0.8rem;
-    }
-    
-    .activity-name {
-        font-size: 1.5rem;
+    h1 {
+        font-size: 2rem;
     }
 }
