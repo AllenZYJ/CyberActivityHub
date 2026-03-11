@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberActivityHub ⚡️</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    {% macro render_activity_card(activity) %}
+    <a href="{{ url_for('activity_detail', activity_id=activity.id, rank=activity.trophy_rank) }}" class="activity-card-link">
+        <div class="activity-card">
+            <div class="activity-header">
+                <span class="activity-type">{{ activity.type }}</span>
+                <span class="activity-date">{{ activity.start_date_local | format_date }}</span>
+            </div>
+            <h2 class="activity-name">{{ activity.name }}</h2>
+            <div class="activity-stats">
+                <div class="stat">
+                    <span class="label">Distance</span>
+                    <span class="value">{{ activity.distance | format_distance }}</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Time</span>
+                    <span class="value">{{ activity.moving_time | format_duration }}</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Trophy</span>
+                    <span class="value">#{{ activity.trophy_rank }}</span>
+                </div>
+            </div>
+        </div>
+    </a>
+    {% endmacro %}
+
+    <div class="container">
+        <header>
+            <h1>⚡️ CyberActivityHub</h1>
+            {% if session.get('athlete') %}
+                <div class="user-info">
+                    <span>{{ session['athlete']['firstname'] }} {{ session['athlete']['lastname'] }}</span>
+                    <a href="{{ url_for('logout') }}" class="btn-logout">Logout</a>
+                </div>
+            {% endif %}
+            <div class="theme-switcher">
+                <button onclick="setTheme('default')" title="Default (Yellow)">🟡</button>
+                <button onclick="setTheme('pink')" title="Pink">🌸</button>
+                <button onclick="setTheme('blue')" title="Prussian Blue">🔵</button>
+            </div>
+        </header>
+
+        <style>
+            .theme-switcher {
+                margin-top: 1rem;
+                display: flex;
+                gap: 0.5rem;
+                justify-content: center;
+                background: #fff;
+                padding: 0.5rem;
+                border: 2px solid #000;
+                box-shadow: 4px 4px 0px #000;
+                transform: rotate(1deg);
+            }
+            .theme-switcher button {
+                border: none;
+                background: none;
+                font-size: 1.5rem;
+                cursor: pointer;
+                transition: transform 0.2s;
+            }
+            .theme-switcher button:hover {
+                transform: scale(1.2);
+            }
+        </style>
+
+        <main>
+            {% if not session.get('access_token') %}
+                <div class="login-container">
+                    <p>Connect your Strava account to view your recent activities.</p>
+                    <a href="{{ url_for('login') }}" class="btn-connect">Connect with Strava</a>
+                </div>
+            {% else %}
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="openTab(event, 'all')">All</button>
+                    <button class="tab-btn" onclick="openTab(event, 'ride')">Ride</button>
+                    <button class="tab-btn" onclick="openTab(event, 'run')">Run</button>
+                    <button class="tab-btn" onclick="openTab(event, 'other')">Other</button>
+                </div>
+
+                <div id="all" class="tab-content active">
+                    {% if grouped_by_month %}
+                        {% for month, month_activities in grouped_by_month.items() %}
+                            <h2 class="month-header">{{ month }}</h2>
+                            <div class="activity-list">
+                                {% for activity in month_activities %}
+                                    {{ render_activity_card(activity) }}
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state"><p>No activities found.</p></div>
+                    {% endif %}
+                </div>
+
+                <div id="ride" class="tab-content">
+                    {% if grouped_activities['ride'] %}
+                        <div class="activity-list">
+                            {% for activity in grouped_activities['ride'] %}
+                                {{ render_activity_card(activity) }}
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-state"><p>No rides found.</p></div>
+                    {% endif %}
+                </div>
+
+                <div id="run" class="tab-content">
+                    {% if grouped_activities['run'] %}
+                        <div class="activity-list">
+                            {% for activity in grouped_activities['run'] %}
+                                {{ render_activity_card(activity) }}
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-state"><p>No runs found.</p></div>
+                    {% endif %}
+                </div>
+
+                <div id="other" class="tab-content">
+                    {% if grouped_activities['other'] %}
+                        <div class="activity-list">
+                            {% for activity in grouped_activities['other'] %}
+                                {{ render_activity_card(activity) }}
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-state"><p>No other activities found.</p></div>
+                    {% endif %}
+                </div>
+
+            {% endif %}
+        </main>
+        
+        <footer>
+            <p>Powered by Strava API</p>
+        </footer>
+    </div>
+
+    <script>
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+                tabcontent[i].classList.remove("active");
+            }
+            tablinks = document.getElementsByClassName("tab-btn");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            // Small timeout to allow display:block to apply before adding opacity class for transition if desired
+            setTimeout(() => {
+                document.getElementById(tabName).classList.add("active");
+            }, 10);
+            
+            evt.currentTarget.className += " active";
+        }
+        
+        // Theme Switcher
+        function setTheme(themeName) {
+            if (themeName === 'default') {
+                document.body.removeAttribute('data-theme');
+                localStorage.removeItem('theme');
+            } else {
+                document.body.setAttribute('data-theme', themeName);
+                localStorage.setItem('theme', themeName);
+            }
+        }
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            document.body.setAttribute('data-theme', savedTheme);
+        }
+
+        // Initialize default tab
+        document.getElementById("all").style.display = "block";
+    </script>
+</body>
+</html>

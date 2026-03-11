@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ activity.name }} - CyberActivityHub ⚡️</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+</head>
+<body>
+    <div class="container">
+        <header class="detail-header">
+            <a href="{{ url_for('index') }}" class="back-link">← Back to Activities</a>
+            <div class="activity-meta">
+                <span class="activity-type">{{ activity.type }}</span>
+                <span class="activity-date">{{ activity.start_date_local | format_date }}</span>
+            </div>
+            <h1>{{ activity.name }}</h1>
+            <div class="theme-switcher">
+                <button onclick="setTheme('default')" title="Default (Yellow)">🟡</button>
+                <button onclick="setTheme('pink')" title="Pink">🌸</button>
+                <button onclick="setTheme('blue')" title="Prussian Blue">🔵</button>
+            </div>
+        </header>
+
+        <style>
+            .theme-switcher {
+                margin-top: 1rem;
+                display: flex;
+                gap: 0.5rem;
+                justify-content: center;
+                background: #fff;
+                padding: 0.5rem;
+                border: 2px solid #000;
+                box-shadow: 4px 4px 0px #000;
+                transform: rotate(1deg);
+                width: fit-content;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            .theme-switcher button {
+                border: none;
+                background: none;
+                font-size: 1.5rem;
+                cursor: pointer;
+                transition: transform 0.2s;
+            }
+            .theme-switcher button:hover {
+                transform: scale(1.2);
+            }
+        </style>
+
+        <main>
+            <div class="bento-grid">
+                {% if coordinates %}
+                <div class="bento-item map-item">
+                    <div id="map"></div>
+                </div>
+                {% endif %}
+
+                <div class="bento-item stat-card large-stat">
+                    <span class="label">Distance</span>
+                    <span class="value">{{ activity.distance | format_distance }}</span>
+                </div>
+                <div class="bento-item stat-card large-stat">
+                    <span class="label">Moving Time</span>
+                    <span class="value">{{ activity.moving_time | format_duration }}</span>
+                </div>
+                
+                <div class="bento-item stat-card">
+                    <span class="label">Elevation</span>
+                    <span class="value">{{ activity.total_elevation_gain }} m</span>
+                </div>
+                
+                {% if activity.type in ['Run', 'VirtualRun', 'Walk', 'Hike'] %}
+                    <div class="bento-item stat-card">
+                        <span class="label">Avg Pace</span>
+                        <span class="value">{{ activity.average_speed | format_pace }}</span>
+                    </div>
+                {% else %}
+                    <div class="bento-item stat-card">
+                        <span class="label">Avg Speed</span>
+                        <span class="value">{{ activity.average_speed | format_speed }}</span>
+                    </div>
+                {% endif %}
+
+                {% if activity.max_speed %}
+                <div class="bento-item stat-card">
+                    <span class="label">Max Speed</span>
+                    <span class="value">{{ activity.max_speed | format_speed }}</span>
+                </div>
+                {% endif %}
+
+                {% if trophy_rank %}
+                <div class="bento-item stat-card">
+                    <span class="label">Trophy Rank</span>
+                    <span class="value">#{{ trophy_rank }} 🏆</span>
+                </div>
+                {% else %}
+                <div class="bento-item stat-card">
+                    <span class="label">Achievements</span>
+                    <span class="value">{{ activity.achievement_count | default(0) }} 🏅</span>
+                </div>
+                {% endif %}
+                
+                {% if activity.average_heartrate %}
+                <div class="bento-item stat-card">
+                    <span class="label">Avg HR</span>
+                    <span class="value">{{ activity.average_heartrate | round | int }} bpm</span>
+                </div>
+                {% endif %}
+                
+                {% if activity.average_watts %}
+                <div class="bento-item stat-card">
+                    <span class="label">Avg Power</span>
+                    <span class="value">{{ activity.average_watts | round | int }} W</span>
+                </div>
+                {% endif %}
+
+                {% if activity.kilojoules %}
+                <div class="bento-item stat-card">
+                    <span class="label">Calories</span>
+                    <span class="value">{{ activity.kilojoules | round | int }} kJ</span>
+                </div>
+                {% endif %}
+            </div>
+        </main>
+        
+        <footer>
+            <p>Powered by Strava API</p>
+        </footer>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+     
+    <script>
+        {% if coordinates %}
+            var map = L.map('map');
+            var coordinates = {{ coordinates | tojson }};
+            
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(map);
+
+            var polyline = L.polyline(coordinates, {
+                color: '#fc4c02',
+                weight: 3,
+                opacity: 0.8,
+                lineJoin: 'round'
+            }).addTo(map);
+
+            // Zoom the map to the polyline
+            map.fitBounds(polyline.getBounds(), {padding: [50, 50]});
+        {% endif %}
+
+        // Theme Switcher
+        function setTheme(themeName) {
+            if (themeName === 'default') {
+                document.body.removeAttribute('data-theme');
+                localStorage.removeItem('theme');
+            } else {
+                document.body.setAttribute('data-theme', themeName);
+                localStorage.setItem('theme', themeName);
+            }
+        }
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            document.body.setAttribute('data-theme', savedTheme);
+        }
+    </script>
+</body>
+</html>
