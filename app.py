@@ -1,6 +1,4 @@
 import os
-import json
-import time
 import requests
 import polyline
 from flask import Flask, render_template, redirect, url_for, session, request
@@ -19,71 +17,6 @@ STRAVA_CLIENT_SECRET = os.getenv('STRAVA_CLIENT_SECRET')
 STRAVA_AUTH_URL = 'https://www.strava.com/oauth/authorize'
 STRAVA_TOKEN_URL = 'https://www.strava.com/oauth/token'
 STRAVA_API_URL = 'https://www.strava.com/api/v3'
-
-TOKEN_FILE = 'strava_tokens.json'
-
-def save_tokens(token_data):
-    """Saves tokens to a local file."""
-    with open(TOKEN_FILE, 'w') as f:
-        json.dump(token_data, f)
-
-def load_tokens():
-    """Loads tokens from a local file."""
-    if os.path.exists(TOKEN_FILE):
-        try:
-            with open(TOKEN_FILE, 'r') as f:
-                return json.load(f)
-        except:
-            pass
-    return None
-
-def refresh_access_token(refresh_token):
-    """Refreshes the access token using the refresh token."""
-    response = requests.post(STRAVA_TOKEN_URL, data={
-        'client_id': STRAVA_CLIENT_ID,
-        'client_secret': STRAVA_CLIENT_SECRET,
-        'grant_type': 'refresh_token',
-        'refresh_token': refresh_token
-    })
-    if response.status_code == 200:
-        return response.json()
-    return None
-
-def get_valid_token():
-    """
-    Retrieves a valid access token.
-    Priority:
-    1. Session
-    2. Local file (auto-refresh if expired)
-    """
-    # 1. Check session first (for specific user override if we ever add multi-user)
-    # But for this "Single User Dashboard" mode, we prefer the file so mobile works.
-    
-    token_data = load_tokens()
-    if token_data:
-        # Check expiry (expires_at is timestamp)
-        if time.time() > token_data.get('expires_at', 0):
-            # Expired, refresh it
-            print("Token expired, refreshing...")
-            new_tokens = refresh_access_token(token_data.get('refresh_token'))
-            if new_tokens:
-                # Merge new tokens with old (keep athlete info if not present)
-                token_data.update(new_tokens)
-                save_tokens(token_data)
-                return token_data
-            else:
-                print("Failed to refresh token.")
-                return None
-        return token_data
-    
-    # Fallback to session if file doesn't exist (e.g. first login before save)
-    if 'access_token' in session:
-        return {
-            'access_token': session['access_token'],
-            'athlete': session.get('athlete')
-        }
-        
-    return None
 
 def get_strava_auth_url():
     """Generates the Strava OAuth authorization URL."""
@@ -216,18 +149,15 @@ def calculate_predicted_calories(activity, athlete_weight=70):
 
 @app.route('/')
 def index():
-    token_data = get_valid_token()
-    if not token_data or 'access_token' not in token_data:
+    if 'access_token' not in session:
         return render_template('index.html', logged_in=False)
     
-    access_token = token_data['access_token']
-    athlete = token_data.get('athlete', {})
-    
-    activities = fetch_activities(access_token)
+    activities = fetch_activities(session['access_token'])
     if not isinstance(activities, list):
         activities = []
     
     # Get athlete weight or default
+    athlete = session.get('athlete', {})
     weight = athlete.get('weight', 70)
     if weight is None or weight == 0:
         weight = 70
@@ -281,24 +211,21 @@ def index():
                          activities=activities, 
                          grouped_activities=grouped_activities,
                          grouped_by_month=grouped_by_month,
-                         user=athlete)
+                         user=session.get('athlete'))
 
 @app.route('/activity/<int:activity_id>')
 def activity_detail(activity_id):
-    token_data = get_valid_token()
-    if not token_data or 'access_token' not in token_data:
+    if 'access_token' not in session:
         return redirect(url_for('index'))
     
-    access_token = token_data['access_token']
-    athlete = token_data.get('athlete', {})
-    
-    activity = fetch_activity_detail(access_token, activity_id)
+    activity = fetch_activity_detail(session['access_token'], activity_id)
     if not activity:
         return "Activity not found", 404
         
     # Get trophy rank from query param (legacy)
     # Now we want predicted calories.
     # Calculate calories for this single activity
+    athlete = session.get('athlete', {})
     weight = athlete.get('weight', 70)
     if weight is None or weight == 0:
         weight = 70
@@ -318,7 +245,7 @@ def activity_detail(activity_id):
                          activity=activity, 
                          coordinates=coordinates,
                          predicted_calories=predicted_calories,
-                         user=athlete)
+                         user=session.get('athlete'))
 
 @app.route('/login')
 def login():
@@ -332,26 +259,16 @@ def callback():
     
     token_data = exchange_code_for_token(code)
     if token_data:
-        # Save to session (optional but good for consistency)
         session['access_token'] = token_data['access_token']
         session['athlete'] = token_data['athlete']
         session['expires_at'] = token_data['expires_at']
         session['refresh_token'] = token_data['refresh_token']
-        
-        # Save to file for single-user mode (persistence across devices)
-        save_tokens(token_data)
     
     return redirect(url_for('index'))
 
 @app.route('/logout')
 def logout():
     session.clear()
-    # Remove the token file to fully log out
-    if os.path.exists(TOKEN_FILE):
-        try:
-            os.remove(TOKEN_FILE)
-        except:
-            pass
     return redirect(url_for('index'))
 
 import sys
