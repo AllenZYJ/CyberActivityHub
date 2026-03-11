@@ -116,6 +116,37 @@ def format_month(date_str):
     except:
         return date_str
 
+def calculate_predicted_calories(activity, athlete_weight=70):
+    """
+    Predicts calorie burn based on:
+    Calories ≈ Distance (km) * Weight (kg) * Efficiency Coefficient * Speed Adjustment
+    """
+    distance_km = activity.get('distance', 0) / 1000
+    avg_speed_mps = activity.get('average_speed', 0)
+    act_type = activity.get('type', '').lower()
+    
+    # Efficiency Coefficients
+    # Running is less efficient (burns more) per km than cycling
+    if act_type in ['run', 'virtualrun', 'walk', 'hike']:
+        base_coeff = 1.036
+    elif act_type in ['ride', 'virtualride', 'ebikeride', 'handcycle']:
+        base_coeff = 0.35 # Cycling is efficient
+    else:
+        base_coeff = 0.5 # Default for other
+
+    # Speed Adjustment (User requested "Speed Coefficient")
+    # Slightly increase burn for higher intensity
+    # Reference speeds: Run 3m/s, Ride 7m/s
+    if act_type in ['run', 'virtualrun']:
+        speed_factor = 1 + max(0, (avg_speed_mps - 2.5) * 0.1)
+    elif act_type in ['ride', 'virtualride']:
+        speed_factor = 1 + max(0, (avg_speed_mps - 5.5) * 0.05)
+    else:
+        speed_factor = 1.0
+
+    calories = distance_km * athlete_weight * base_coeff * speed_factor
+    return int(calories)
+
 @app.route('/')
 def index():
     if 'access_token' not in session:
@@ -125,21 +156,22 @@ def index():
     if not isinstance(activities, list):
         activities = []
     
-    # Get total activity count to calculate trophy rank
-    stats = fetch_athlete_stats(session['access_token'], session['athlete']['id'])
-    total_activities = 0
-    if stats:
-        total_activities = (
-            stats.get('all_ride_totals', {}).get('count', 0) +
-            stats.get('all_run_totals', {}).get('count', 0) +
-            stats.get('all_swim_totals', {}).get('count', 0)
-        )
-    
-    # Assign ranks (newest = total_activities, descending)
-    current_rank = total_activities
+    # Get athlete weight or default
+    athlete = session.get('athlete', {})
+    weight = athlete.get('weight', 70)
+    if weight is None or weight == 0:
+        weight = 70
+
+    # Calculate Calories
     for activity in activities:
-        activity['trophy_rank'] = current_rank
-        current_rank -= 1
+        # Check if kilojoules already exists (from power meter), convert to kcal if so
+        # 1 kJ = 0.239 kcal. Strava usually gives kJ for rides with power.
+        if activity.get('kilojoules'):
+            activity['predicted_calories'] = int(activity['kilojoules'] * 0.239 / 0.24) # ~1:1 kJ to kcal for metabolic work roughly
+            # Actually Strava kJ is mechanical work. Metabolic efficiency is ~24%. So 1kJ mechanical ~= 1kcal metabolic.
+            activity['predicted_calories'] = int(activity['kilojoules']) 
+        else:
+            activity['predicted_calories'] = calculate_predicted_calories(activity, weight)
 
     # Group activities by type
     grouped_activities = {
@@ -190,8 +222,18 @@ def activity_detail(activity_id):
     if not activity:
         return "Activity not found", 404
         
-    # Get trophy rank from query param or default to ?
-    trophy_rank = request.args.get('rank')
+    # Get trophy rank from query param (legacy)
+    # Now we want predicted calories.
+    # Calculate calories for this single activity
+    athlete = session.get('athlete', {})
+    weight = athlete.get('weight', 70)
+    if weight is None or weight == 0:
+        weight = 70
+        
+    if activity.get('kilojoules'):
+        predicted_calories = int(activity['kilojoules'])
+    else:
+        predicted_calories = calculate_predicted_calories(activity, weight)
     
     # Decode polyline for map if available
     map_polyline = activity.get('map', {}).get('polyline') or activity.get('map', {}).get('summary_polyline')
@@ -202,7 +244,7 @@ def activity_detail(activity_id):
     return render_template('detail.html', 
                          activity=activity, 
                          coordinates=coordinates,
-                         trophy_rank=trophy_rank,
+                         predicted_calories=predicted_calories,
                          user=session.get('athlete'))
 
 @app.route('/login')
