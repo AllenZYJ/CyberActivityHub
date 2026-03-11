@@ -20,7 +20,11 @@ STRAVA_API_URL = 'https://www.strava.com/api/v3'
 
 def get_strava_auth_url():
     """Generates the Strava OAuth authorization URL."""
-    redirect_uri = url_for('callback', _external=True)
+    # Force domain to likedge.top and use current port
+    # Strava requires the domain to match the Authorization Callback Domain
+    port = request.host.split(':')[-1] if ':' in request.host else '80'
+    redirect_uri = f"http://likedge.top:{port}{url_for('callback')}"
+    
     return (
         f"{STRAVA_AUTH_URL}?"
         f"client_id={STRAVA_CLIENT_ID}&"
