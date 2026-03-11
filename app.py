@@ -332,16 +332,26 @@ def callback():
     
     token_data = exchange_code_for_token(code)
     if token_data:
+        # Save to session (optional but good for consistency)
         session['access_token'] = token_data['access_token']
         session['athlete'] = token_data['athlete']
         session['expires_at'] = token_data['expires_at']
         session['refresh_token'] = token_data['refresh_token']
+        
+        # Save to file for single-user mode (persistence across devices)
+        save_tokens(token_data)
     
     return redirect(url_for('index'))
 
 @app.route('/logout')
 def logout():
     session.clear()
+    # Remove the token file to fully log out
+    if os.path.exists(TOKEN_FILE):
+        try:
+            os.remove(TOKEN_FILE)
+        except:
+            pass
     return redirect(url_for('index'))
 
 import sys
